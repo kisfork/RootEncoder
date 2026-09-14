@@ -255,13 +255,18 @@ class SrtClient(private val connectChecker: ConnectChecker) {
   }
 
   fun disconnect() {
+    // Set the flag synchronously — the async cleanup below may not
+    // have run by the time a subsequent connect() checks it, silently
+    // skipping the entire connection attempt (the caller's disconnect
+    // → connect sequence is immediate on reconnect).
+    isStreaming = false
     CoroutineScope(Dispatchers.IO).launch {
       disconnect(true)
     }
   }
 
   private suspend fun disconnect(clear: Boolean) {
-    if (isStreaming) srtSender.stop(clear)
+    srtSender.stop(clear)
     runCatching {
       withTimeoutOrNull(100) {
         commandsManager.writeShutdown(socket)
