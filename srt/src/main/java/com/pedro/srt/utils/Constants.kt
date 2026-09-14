@@ -21,5 +21,9 @@ package com.pedro.srt.utils
  */
 object Constants {
   const val MTU = 1500
+
+  // UDP receive buffer: a full control-plane burst window, not the MTU
+  // — the previous one-datagram buffer overflowed on any burst.
+  const val RECEIVE_BUFFER_SIZE = 512 * 1024
   const val SYSTEM_CLOCK_FREQ = 27000000
 }

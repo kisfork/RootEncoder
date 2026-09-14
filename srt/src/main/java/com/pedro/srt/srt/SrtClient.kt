@@ -54,6 +54,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 import java.net.URISyntaxException
@@ -305,9 +306,17 @@ class SrtClient(private val connectChecker: ConnectChecker) {
     while (scope.isActive && isStreaming) {
       val error = runCatching {
         if (isAlive()) {
-          delay(2000)
-          //ignore packet after connect if tunneled to avoid spam idle
-          handleMessages()
+          // Drain the control plane continuously: the suspending receive
+          // parks until the next packet, so ACKs are answered and NAK
+          // losses retransmitted immediately. The previous 2s poll drained
+          // one packet per tick — ACKACKs arrived after the peer retired
+          // the ack record ("ACK record not found" on libsrt servers) and
+          // NAKs starved until the connection was dropped. The timeout
+          // only bounds silence so the liveness check still runs; it
+          // parses as TIMEOUT below and the loop tolerates it.
+          withTimeout(10_000) {
+            handleMessages()
+          }
         } else {
           onMainThread {
             connectChecker.onConnectionFailed("No response from server")

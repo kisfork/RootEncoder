@@ -24,7 +24,7 @@ import com.pedro.srt.srt.packets.SrtPacket
  */
 class SrtSocket(host: String, port: Int) {
 
-  private val socket = UdpStreamSocket(host, port, receiveSize = Constants.MTU)
+  private val socket = UdpStreamSocket(host, port, receiveSize = Constants.RECEIVE_BUFFER_SIZE)
 
   suspend fun connect() {
     socket.connect()

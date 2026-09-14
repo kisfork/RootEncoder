@@ -49,6 +49,10 @@ class CommandsManager {
 
   var sequenceNumber: Int = generateInitialSequence()
   var messageNumber = 1
+  // Last ACK number ACK2'd — ack numbers from the peer increase
+  // monotonically, so duplicates and reordered ACKs must not be
+  // answered (stale ACK2s hit "ACK record not found" on libsrt peers).
+  private var lastAck2Sent = -1
   var MTU = Constants.MTU
   var socketId = 0
   var startTS = 0L //microSeconds
@@ -147,6 +151,8 @@ class CommandsManager {
   @Throws(IOException::class)
   suspend fun writeAck2(ackSequence: Int, socket: SrtSocket?) {
     writeSync.withLock {
+      if (ackSequence <= lastAck2Sent) return@withLock
+      lastAck2Sent = ackSequence
       val ack2 = Ack2(ackSequence)
       ack2.write(getTs(), socketId)
       socket?.write(ack2)
@@ -174,6 +180,7 @@ class CommandsManager {
   fun reset() {
     sequenceNumber = generateInitialSequence()
     messageNumber = 1
+    lastAck2Sent = -1
     MTU = Constants.MTU
     socketId = 0
     startTS = 0L
